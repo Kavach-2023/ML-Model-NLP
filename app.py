@@ -40,17 +40,15 @@ def predict():
         )
         
 
-@app.route('/predict_api', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict_api():
-    data = request.get_json()
-    url = request.form(url)
+    url = request.json.get("url")
     
     X_predict = []
     
     if url:
         X_predict.append(str(url))
         y_Predict = ''.join(phish_model_ls.predict(X_predict))
-        print(y_Predict)
         if y_Predict == 'bad':
             result = "This is a Phishing Site"
         else:
@@ -64,7 +62,8 @@ def predict_api():
         )
             
     response = {
-        'prediction': result
+        'prediction': result,
+        'safe': y_Predict != 'bad'
     }
     
     return jsonify(response)
