@@ -1,8 +1,16 @@
 from flask import Flask, request, Response, render_template, jsonify
+from flask_cors import CORS
 import pickle
+from geopy.geocoders import Nominatim
+from urllib.parse import urlparse
+import socket as sockets
+import requests
+import collections
+collections.Iterable = collections.abc.Iterable
 
 
 app = Flask(__name__)
+CORS(app)
 # read our pickle file and label our logisticmodel as model
 phish_model_ls = pickle.load(open('phishing.pkl', 'rb'))
 
@@ -68,6 +76,37 @@ def predict_api():
     
     return jsonify(response)
 
+def get_ip_address(url):
+    ip_address = sockets.gethostbyname(url)
+    return ip_address
+
+@app.route('/api/geolocation', methods=['GET'])
+def geolocation_endpoint():
+    url = request.args.get('url', '')  # Get the URL from the query parameter
+
+    parsed_data = urlparse(url)
+    print(parsed_data)
+
+    if parsed_data.netloc != "":
+        url = parsed_data.netloc
+    else:
+        url = parsed_data.path
+
+    url = url.replace("http://","").replace("https://","").replace("www.", "")
+
+    try:
+        ip_address = get_ip_address(url)
+        api_url = f"https://ipapi.co/{ip_address}/json"
+        response = requests.get(api_url)
+        response_json = response.json()
+
+        return jsonify(response_json)
+
+    except sockets.gaierror:
+        return jsonify({"error": f"Unable to resolve the IP address for {url}."})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == '__main__':
 
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    app.run(debug=True, host='0.0.0.0', port=1234, threaded=True)
